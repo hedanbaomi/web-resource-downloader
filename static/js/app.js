@@ -103,6 +103,66 @@ function getCookies() {
             cookies.pixiv_PHPSESSID = pixivCookie;
         }
     }
+    const twitterCookie = document.getElementById('twitterCookieInput').value.trim();
+    if (twitterCookie) {
+        if (twitterCookie.includes('=')) {
+            twitterCookie.split(';').forEach(part => {
+                const eq = part.indexOf('=');
+                if (eq > 0) {
+                    const key = part.substring(0, eq).trim();
+                    const val = part.substring(eq + 1).trim();
+                    if (key && val) cookies['twitter_' + key] = val;
+                }
+            });
+        } else {
+            cookies.twitter_auth_token = twitterCookie;
+        }
+    }
+    const instagramCookie = document.getElementById('instagramCookieInput').value.trim();
+    if (instagramCookie) {
+        if (instagramCookie.includes('=')) {
+            instagramCookie.split(';').forEach(part => {
+                const eq = part.indexOf('=');
+                if (eq > 0) {
+                    const key = part.substring(0, eq).trim();
+                    const val = part.substring(eq + 1).trim();
+                    if (key && val) cookies['instagram_' + key] = val;
+                }
+            });
+        } else {
+            cookies.instagram_sessionid = instagramCookie;
+        }
+    }
+    const pinterestCookie = document.getElementById('pinterestCookieInput').value.trim();
+    if (pinterestCookie) {
+        if (pinterestCookie.includes('=')) {
+            pinterestCookie.split(';').forEach(part => {
+                const eq = part.indexOf('=');
+                if (eq > 0) {
+                    const key = part.substring(0, eq).trim();
+                    const val = part.substring(eq + 1).trim();
+                    if (key && val) cookies['pinterest_' + key] = val;
+                }
+            });
+        } else {
+            cookies.pinterest_cookie = pinterestCookie;
+        }
+    }
+    const tiebaCookie = document.getElementById('tiebaCookieInput').value.trim();
+    if (tiebaCookie) {
+        if (tiebaCookie.includes('=')) {
+            tiebaCookie.split(';').forEach(part => {
+                const eq = part.indexOf('=');
+                if (eq > 0) {
+                    const key = part.substring(0, eq).trim();
+                    const val = part.substring(eq + 1).trim();
+                    if (key && val) cookies['tieba_' + key] = val;
+                }
+            });
+        } else {
+            cookies.tieba_BDUSS = tiebaCookie;
+        }
+    }
     return cookies;
 }
 

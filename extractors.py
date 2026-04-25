@@ -887,7 +887,44 @@ class PinterestExtractor:
             resources.extend(self._extract_from_data(data))
         if not resources:
             resources.extend(self._extract_pinimg_from_html(html))
+        if not resources:
+            api_data = self._fetch_pin_api(url)
+            if api_data:
+                resources.extend(self._extract_from_api(api_data))
         return self._dedup(resources)
+
+    def _fetch_pin_api(self, url):
+        m = re.search(r'/pin/(\d+)', url)
+        if not m:
+            return None
+        pin_id = m.group(1)
+        try:
+            api_url = f'https://www.pinterest.com/resource/PinResource/get/'
+            params = {'data': json.dumps({'options': {'id': pin_id, 'field_set_key': 'detailed'}})}
+            headers = {**BROWSER_HEADERS, 'Referer': 'https://www.pinterest.com/'}
+            cookie_str = '; '.join(f'{k}={v}' for k, v in self.cookies.items() if v)
+            if cookie_str:
+                headers['Cookie'] = cookie_str
+            resp = requests.get(api_url, params=params, headers=headers, timeout=15)
+            if resp.status_code == 200:
+                return resp.json()
+        except Exception:
+            pass
+        return None
+
+    def _extract_from_api(self, data):
+        resources = []
+        d_str = json.dumps(data, ensure_ascii=False)
+        orig_urls = re.findall(r'"originals"\s*:\s*\{[^}]*"url"\s*:\s*"([^"]+)"', d_str)
+        for i, url in enumerate(orig_urls):
+            url = url.replace('\\/', '/').replace('\\u002F', '/')
+            ext = '.' + url.split('?')[0].rsplit('.', 1)[-1] if '.' in url.split('?')[0] else '.jpg'
+            resources.append({'url': url, 'name': f'pinterest_orig_{i + 1}{ext}', 'category': 'image', 'extension': ext})
+        video_urls = re.findall(r'"video_url"\s*:\s*"([^"]+)"', d_str)
+        for i, url in enumerate(video_urls):
+            url = url.replace('\\/', '/').replace('\\u002F', '/')
+            resources.append({'url': url, 'name': f'pinterest_video_{i + 1}.mp4', 'category': 'video', 'extension': '.mp4'})
+        return resources
 
     def _parse_pws_data(self, html):
         m = re.search(r'<script[^>]*id=["\']__PWS_DATA__["\'][^>]*>(.*?)</script>', html, re.DOTALL)
@@ -1165,8 +1202,49 @@ class TwitterExtractor:
         data = self._parse_graphql_data(html)
         if data:
             resources.extend(self._extract_from_data(data))
+        if not resources and self.cookies:
+            api_data = self._fetch_tweet_api(url)
+            if api_data:
+                resources.extend(self._extract_from_api(api_data))
         resources = [r for r in resources if 'abs.twimg.com' not in r['url']]
         return self._dedup(resources)
+
+    def _fetch_tweet_api(self, url):
+        m = re.search(r'/status/(\d+)', url)
+        if not m:
+            return None
+        tweet_id = m.group(1)
+        try:
+            api_url = f'https://syndication.twitter.com/srv/timeline-profile/api/v1/status/{tweet_id}'
+            headers = {**BROWSER_HEADERS, 'Referer': 'https://platform.twitter.com/'}
+            cookie_str = '; '.join(f'{k}={v}' for k, v in self.cookies.items() if v)
+            if cookie_str:
+                headers['Cookie'] = cookie_str
+            resp = requests.get(api_url, headers=headers, timeout=15)
+            if resp.status_code == 200:
+                return resp.json()
+        except Exception:
+            pass
+        return None
+
+    def _extract_from_api(self, data):
+        resources = []
+        d_str = json.dumps(data, ensure_ascii=False)
+        img_urls = re.findall(r'(https?://pbs\.twimg\.com/media/[^\s"\\]+\.(?:jpg|png|gif|webp))', d_str)
+        for i, url in enumerate(img_urls):
+            url = url.replace('\\/', '/').replace('\\u002F', '/')
+            if '_orig' not in url:
+                orig_url = re.sub(r'\.(jpg|png|gif|webp)$', r'_orig.\1', url)
+            else:
+                orig_url = url
+            fname = orig_url.split('/')[-1].split('?')[0] or f'twitter_img_{i+1}.jpg'
+            ext = '.' + fname.rsplit('.', 1)[-1] if '.' in fname else '.jpg'
+            resources.append({'url': orig_url, 'name': fname, 'category': 'image', 'extension': ext})
+        video_urls = re.findall(r'(https?://video\.twimg\.com/[^\s"\\]+\.mp4)', d_str)
+        for i, url in enumerate(video_urls):
+            url = url.replace('\\/', '/').replace('\\u002F', '/')
+            resources.append({'url': url, 'name': f'twitter_video_{i+1}.mp4', 'category': 'video', 'extension': '.mp4'})
+        return resources
 
     def _extract_og_media(self, html):
         resources = []
@@ -1235,7 +1313,45 @@ class InstagramExtractor:
             resources.extend(self._extract_from_data(data))
         resources.extend(self._extract_og_media(html))
         resources.extend(self._extract_cdn_images(html))
+        if not resources and self.cookies:
+            api_data = self._fetch_instagram_api(url)
+            if api_data:
+                resources.extend(self._extract_from_api_result(api_data))
         return self._dedup(resources)
+
+    def _fetch_instagram_api(self, url):
+        m = re.search(r'/p/([A-Za-z0-9_-]+)', url)
+        if not m:
+            m = re.search(r'/reel/([A-Za-z0-9_-]+)', url)
+        if not m:
+            return None
+        shortcode = m.group(1)
+        try:
+            api_url = f'https://www.instagram.com/api/v1/media/{shortcode}/info/'
+            headers = {**BROWSER_HEADERS, 'Referer': 'https://www.instagram.com/'}
+            cookie_str = '; '.join(f'{k}={v}' for k, v in self.cookies.items() if v)
+            if cookie_str:
+                headers['Cookie'] = cookie_str
+            headers['X-IG-App-ID'] = '936619743392459'
+            resp = requests.get(api_url, headers=headers, timeout=15)
+            if resp.status_code == 200:
+                return resp.json()
+        except Exception:
+            pass
+        return None
+
+    def _extract_from_api_result(self, data):
+        resources = []
+        d_str = json.dumps(data, ensure_ascii=False)
+        display_urls = re.findall(r'"display_url"\s*:\s*"([^"]+)"', d_str)
+        for i, url in enumerate(display_urls[:10]):
+            url = url.replace('\\u002F', '/').replace('\\/', '/')
+            resources.append({'url': url, 'name': f'instagram_{i + 1}.jpg', 'category': 'image', 'extension': '.jpg'})
+        video_urls = re.findall(r'"video_url"\s*:\s*"([^"]+)"', d_str)
+        for i, url in enumerate(video_urls[:5]):
+            url = url.replace('\\u002F', '/').replace('\\/', '/')
+            resources.append({'url': url, 'name': f'instagram_video_{i + 1}.mp4', 'category': 'video', 'extension': '.mp4'})
+        return resources
 
     def _parse_shared_data(self, html):
         m = re.search(r'window\._sharedData\s*=\s*(\{.+?)\s*;</script>', html, re.DOTALL)
@@ -1549,11 +1665,16 @@ def extract_embedded_js_media(html):
 
 def _build_all_extractors(cookies):
     all_cookies = cookies or {}
-    bilibili_cookies = {k: v for k, v in all_cookies.items() if not any(k.startswith(p) for p in ['weibo_', 'zhihu_', 'douyin_', 'pixiv_'])}
+    site_prefixes = ['weibo_', 'zhihu_', 'douyin_', 'pixiv_', 'twitter_', 'instagram_', 'pinterest_', 'tieba_']
+    bilibili_cookies = {k: v for k, v in all_cookies.items() if not any(k.startswith(p) for p in site_prefixes)}
     weibo_cookies = {}
     zhihu_cookies = {}
     douyin_cookies = {}
     pixiv_cookies = {}
+    twitter_cookies = {}
+    instagram_cookies = {}
+    pinterest_cookies = {}
+    tieba_cookies = {}
     for k, v in all_cookies.items():
         if k.startswith('weibo_'):
             weibo_cookies[k[6:]] = v
@@ -1563,8 +1684,18 @@ def _build_all_extractors(cookies):
             douyin_cookies[k[7:]] = v
         elif k.startswith('pixiv_'):
             pixiv_cookies[k[6:]] = v
+        elif k.startswith('twitter_'):
+            twitter_cookies[k[8:]] = v
+        elif k.startswith('instagram_'):
+            instagram_cookies[k[10:]] = v
+        elif k.startswith('pinterest_'):
+            pinterest_cookies[k[10:]] = v
+        elif k.startswith('tieba_'):
+            tieba_cookies[k[6:]] = v
     if 'SUB' in all_cookies:
         weibo_cookies['SUB'] = all_cookies['SUB']
+    if 'BDUSS' in all_cookies:
+        tieba_cookies['BDUSS'] = all_cookies['BDUSS']
     return [
         BilibiliExtractor(cookies=bilibili_cookies),
         XhsExtractor(cookies=bilibili_cookies),
@@ -1573,14 +1704,14 @@ def _build_all_extractors(cookies):
         KuaishouExtractor(cookies={}),
         ZhihuExtractor(cookies=zhihu_cookies),
         GithubExtractor(cookies={}),
-        PinterestExtractor(cookies={}),
+        PinterestExtractor(cookies=pinterest_cookies),
         PixivExtractor(cookies=pixiv_cookies),
         CsdnExtractor(cookies={}),
-        TiebaExtractor(cookies=all_cookies if 'BDUSS' in all_cookies or 'tieba_' in str(all_cookies.keys()) else {}),
-        TwitterExtractor(cookies=all_cookies if 'auth_token' in all_cookies or 'ct0' in all_cookies else {}),
-        InstagramExtractor(cookies=all_cookies if 'sessionid' in all_cookies or 'ds_user_id' in all_cookies else {}),
+        TiebaExtractor(cookies=tieba_cookies),
+        TwitterExtractor(cookies=twitter_cookies),
+        InstagramExtractor(cookies=instagram_cookies),
         CoolapkExtractor(cookies={}),
-        LofterExtractor(cookies=all_cookies if 'LOFTER' in all_cookies or 'lofter_' in str(all_cookies.keys()) else {}),
+        LofterExtractor(cookies=all_cookies if 'LOFTER' in all_cookies else {}),
         NetEaseMusicExtractor(cookies={}),
         KugouExtractor(cookies={}),
     ]
