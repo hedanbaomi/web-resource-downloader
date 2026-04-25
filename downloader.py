@@ -44,17 +44,18 @@ def _unique_filepath(directory, filename):
     return filepath
 
 
-def download_file(url, save_dir, max_retries=3):
+def download_file(url, save_dir, max_retries=3, custom_headers=None):
+    req_headers = {**BROWSER_HEADERS, **(custom_headers or {})}
     for attempt in range(max_retries):
         try:
-            head_resp = requests.head(url, headers=BROWSER_HEADERS, timeout=15, allow_redirects=True)
+            head_resp = requests.head(url, headers=req_headers, timeout=15, allow_redirects=True)
             content_type = head_resp.headers.get('Content-Type', '')
             file_size = head_resp.headers.get('Content-Length')
 
             filename = get_filename_from_url(url, head_resp)
             filepath = _unique_filepath(save_dir, filename)
 
-            resp = requests.get(url, headers=BROWSER_HEADERS, timeout=60, allow_redirects=True, stream=True)
+            resp = requests.get(url, headers=req_headers, timeout=60, allow_redirects=True, stream=True)
             resp.raise_for_status()
 
             if not filename or filename == f'download_{uuid.uuid4().hex[:8]}':
@@ -108,7 +109,8 @@ def batch_download(task_id, resources, save_dir, max_workers=4):
             return {'status': 'cancelled', 'url': resource['url'], 'filename': resource.get('name', '')}
 
         task_info['current_file'] = resource.get('name', resource['url'])
-        result = download_file(resource['url'], save_dir)
+        custom_headers = resource.get('headers')
+        result = download_file(resource['url'], save_dir, custom_headers=custom_headers)
         return result
 
     try:

@@ -263,6 +263,19 @@ body {
     word-break: break-all;
 }
 
+.special-badge {
+    cursor: help;
+    margin-right: 4px;
+    font-size: 0.85rem;
+}
+
+.dash-note {
+    cursor: help;
+    margin-right: 4px;
+    font-size: 0.85rem;
+    color: #e65100;
+}
+
 .category-badge {
     display: inline-block;
     padding: 2px 10px;

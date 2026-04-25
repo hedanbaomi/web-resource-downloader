@@ -101,15 +101,19 @@ function renderResources() {
     resourceList.style.display = 'block';
     emptyState.style.display = 'none';
 
-    tbody.innerHTML = filtered.map((r, idx) => `
+    tbody.innerHTML = filtered.map((r, idx) => {
+        const hasHeaders = r.headers ? '<span class="special-badge" title="需要特殊请求头下载">🔐</span>' : '';
+        const dashNote = r.name.includes('视频流') ? '<span class="dash-note" title="DASH视频流仅含画面无声音，需配合音频流使用ffmpeg合并">⚠</span>' : '';
+        return `
         <tr>
             <td><input type="checkbox" class="resource-checkbox" data-index="${allResources.indexOf(r)}" onchange="updateSelectedCount()"></td>
-            <td class="resource-name">${escapeHtml(r.name)}</td>
+            <td class="resource-name">${hasHeaders}${dashNote}${escapeHtml(r.name)}</td>
             <td><span class="category-badge ${r.category}">${CATEGORY_LABELS[r.category] || r.category}</span></td>
             <td><span class="extension-tag">${escapeHtml(r.extension || '—')}</span></td>
             <td><a class="resource-url" href="${escapeHtml(r.url)}" target="_blank" title="${escapeHtml(r.url)}">${escapeHtml(truncateUrl(r.url, 45))}</a></td>
         </tr>
-    `).join('');
+        `;
+    }).join('');
 
     updateSelectedCount();
 }
@@ -137,10 +141,14 @@ function getSelectedResources() {
     document.querySelectorAll('.resource-checkbox:checked').forEach(cb => {
         const idx = parseInt(cb.dataset.index);
         if (allResources[idx]) {
-            selected.push({
+            const res = {
                 url: allResources[idx].url,
                 name: allResources[idx].name,
-            });
+            };
+            if (allResources[idx].headers) {
+                res.headers = allResources[idx].headers;
+            }
+            selected.push(res);
         }
     });
     return selected;

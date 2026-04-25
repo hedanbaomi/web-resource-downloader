@@ -5,7 +5,8 @@ import uuid
 import threading
 
 from flask import Flask, render_template, request, jsonify, Response
-from scraper import fetch_page, parse_resources
+from scraper import fetch_page, parse_resources, _normalize_url
+from extractors import run_extractors
 from downloader import batch_download, pop_progress, get_task_info, cancel_task
 
 app = Flask(__name__)
@@ -36,6 +37,14 @@ def analyze():
         return jsonify({'error': f'网页获取失败: {error_msg}'}), 400
 
     parsed = parse_resources(result['final_url'], result['html'])
+
+    extracted = run_extractors(result['final_url'], result['html'])
+
+    seen_urls = set(_normalize_url(r['url']) for r in parsed['resources'])
+    for r in extracted:
+        if _normalize_url(r['url']) not in seen_urls:
+            seen_urls.add(_normalize_url(r['url']))
+            parsed['resources'].append(r)
 
     return jsonify({
         'resources': parsed['resources'],

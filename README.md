@@ -11,6 +11,8 @@
 - **实时进度** — SSE 实时推送下载进度，显示成功/失败计数
 - **忽略 robots.txt** — 不受网站 robots.txt 限制，伪装浏览器请求头绕过反爬
 - **断点容错** — 下载失败自动重试（最多3次），文件名冲突自动重命名
+- **B站视频提取** — 自动调用B站 API 提取视频/音频流，支持 DASH 格式多画质多编码
+- **通用动态提取** — 解析 og:video、JSON-LD、嵌入 JS 中的媒体 URL，覆盖更多动态网站
 
 ## 🛠️ 技术栈
 
@@ -28,6 +30,7 @@
 网页资源下载器/
 ├── app.py                  # Flask 主应用（路由与 API）
 ├── scraper.py              # 网页抓取与资源解析模块
+├── extractors.py           # 站点专用与通用媒体提取器
 ├── downloader.py           # 批量下载管理模块
 ├── requirements.txt        # Python 依赖包
 ├── README.md               # 项目说明
