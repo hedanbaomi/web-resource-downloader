@@ -38,7 +38,9 @@ def analyze():
 
     parsed = parse_resources(result['final_url'], result['html'])
 
-    extracted = run_extractors(result['final_url'], result['html'])
+    cookies = data.get('cookies', {})
+
+    extracted = run_extractors(result['final_url'], result['html'], cookies=cookies)
 
     seen_urls = set(_normalize_url(r['url']) for r in parsed['resources'])
     for r in extracted:

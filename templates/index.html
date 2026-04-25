@@ -22,6 +22,21 @@
                     <span class="btn-loading" style="display:none;">⏳ 分析中...</span>
                 </button>
             </div>
+            <div class="cookie-section" id="cookieSection">
+                <button class="cookie-toggle" onclick="toggleCookieSection()">
+                    🍪 网站Cookie设置 <span id="cookieToggleIcon">▼</span>
+                </button>
+                <div class="cookie-inputs" id="cookieInputs" style="display:none;">
+                    <div class="cookie-hint">
+                        提供B站等网站的Cookie可获取更高画质的视频。B站在浏览器中登录后，按F12打开开发者工具 → Application → Cookies，复制 <code>SESSDATA</code> 的值填入下方。
+                    </div>
+                    <div class="cookie-field">
+                        <label for="sessdataInput">SESSDATA：</label>
+                        <input type="text" id="sessdataInput" placeholder="粘贴B站的 SESSDATA Cookie 值"
+                               autocomplete="off" spellcheck="false">
+                    </div>
+                </div>
+            </div>
         </section>
 
         <section id="resultSection" class="result-section" style="display:none;">

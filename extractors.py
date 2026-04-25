@@ -26,10 +26,19 @@ BILIBILI_CODEC_MAP = {
 
 
 class BilibiliExtractor:
+    def __init__(self, cookies=None):
+        self.cookies = cookies or {}
+
     def match(self, url):
         parsed = urlparse(url)
         host = (parsed.hostname or '').lower()
         return 'bilibili.com' in host or 'b23.tv' in host
+
+    def _build_headers(self):
+        headers = dict(BILIBILI_HEADERS)
+        if self.cookies.get('SESSDATA'):
+            headers['Cookie'] = '; '.join(f'{k}={v}' for k, v in self.cookies.items())
+        return headers
 
     def extract(self, url, html=''):
         resources = []
@@ -93,7 +102,8 @@ class BilibiliExtractor:
             resp = requests.get(
                 'https://api.bilibili.com/x/web-interface/view',
                 params={'bvid': bvid},
-                headers=BILIBILI_HEADERS,
+                headers=self._build_headers(),
+                cookies=self.cookies,
                 timeout=15,
             )
             data = resp.json()
@@ -114,7 +124,8 @@ class BilibiliExtractor:
                     'fnval': 16,
                     'fourk': 1,
                 },
-                headers=BILIBILI_HEADERS,
+                headers=self._build_headers(),
+                cookies=self.cookies,
                 timeout=15,
             )
             data = resp.json()
@@ -131,6 +142,7 @@ class BilibiliExtractor:
 
     def _extract_from_dash(self, dash, title):
         resources = []
+        dl_headers = self._build_headers()
         seen_video = set()
         for video in dash.get('video', []):
             quality = video.get('id', 0)
@@ -153,7 +165,7 @@ class BilibiliExtractor:
                 'name': f'{title}_视频流_{q_label}_{c_label}.mp4',
                 'category': 'video',
                 'extension': '.mp4',
-                'headers': BILIBILI_HEADERS,
+                'headers': dl_headers,
             })
 
         seen_audio = set()
@@ -175,7 +187,7 @@ class BilibiliExtractor:
                 'name': f'{title}_音频流_{q_label}.m4a',
                 'category': 'audio',
                 'extension': '.m4a',
-                'headers': BILIBILI_HEADERS,
+                'headers': dl_headers,
             })
 
         dolby = dash.get('dolby', {})
@@ -188,7 +200,7 @@ class BilibiliExtractor:
                         'name': f'{title}_音频流_杜比音效.m4a',
                         'category': 'audio',
                         'extension': '.m4a',
-                        'headers': BILIBILI_HEADERS,
+                        'headers': dl_headers,
                     })
 
         return resources
@@ -204,7 +216,8 @@ class BilibiliExtractor:
                         'qn': qn,
                         'fnval': 0,
                     },
-                    headers=BILIBILI_HEADERS,
+                    headers=self._build_headers(),
+                    cookies=self.cookies,
                     timeout=15,
                 )
                 data = resp.json()
@@ -213,6 +226,7 @@ class BilibiliExtractor:
 
                 durl = data.get('data', {}).get('durl', [])
                 q_label = BILIBILI_QUALITY_MAP.get(qn, f'{qn}P')
+                dl_headers = self._build_headers()
                 resources = []
                 for idx, segment in enumerate(durl):
                     url = segment.get('url', '')
@@ -225,7 +239,7 @@ class BilibiliExtractor:
                         'name': f'{title}_合并_{q_label}{suffix}{ext}',
                         'category': 'video',
                         'extension': ext,
-                        'headers': BILIBILI_HEADERS,
+                        'headers': dl_headers,
                     })
                 if resources:
                     return resources
@@ -350,14 +364,17 @@ def extract_embedded_js_media(html):
     return resources
 
 
-EXTRACTORS = [BilibiliExtractor()]
+EXTRACTORS = []
 
 
-def run_extractors(url, html=''):
+def run_extractors(url, html='', cookies=None):
     all_resources = []
     seen_urls = set()
 
-    for extractor in EXTRACTORS:
+    cookie_dict = cookies or {}
+    extractors = [BilibiliExtractor(cookies=cookie_dict)]
+
+    for extractor in extractors:
         if extractor.match(url):
             try:
                 extracted = extractor.extract(url, html)

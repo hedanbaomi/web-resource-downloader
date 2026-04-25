@@ -12,6 +12,27 @@ const CATEGORY_LABELS = {
     other: '其他',
 };
 
+function toggleCookieSection() {
+    const inputs = document.getElementById('cookieInputs');
+    const icon = document.getElementById('cookieToggleIcon');
+    if (inputs.style.display === 'none') {
+        inputs.style.display = 'block';
+        icon.textContent = '▲';
+    } else {
+        inputs.style.display = 'none';
+        icon.textContent = '▼';
+    }
+}
+
+function getCookies() {
+    const sessdata = document.getElementById('sessdataInput').value.trim();
+    const cookies = {};
+    if (sessdata) {
+        cookies.SESSDATA = sessdata;
+    }
+    return cookies;
+}
+
 function analyzeUrl() {
     const urlInput = document.getElementById('urlInput');
     const url = urlInput.value.trim();
@@ -30,7 +51,7 @@ function analyzeUrl() {
     fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url }),
+        body: JSON.stringify({ url: url, cookies: getCookies() }),
     })
     .then(resp => resp.json())
     .then(data => {
