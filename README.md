@@ -16,13 +16,13 @@
 
 ## 🛠️ 技术栈
 
-| 层级 | 技术 |
-|------|------|
-| 后端 | Python 3 + Flask |
-| 网页解析 | requests + BeautifulSoup4 + lxml |
+| 层级   | 技术                                      |
+| ---- | --------------------------------------- |
+| 后端   | Python 3 + Flask                        |
+| 网页解析 | requests + BeautifulSoup4 + lxml        |
 | 并发下载 | concurrent.futures (ThreadPoolExecutor) |
-| 进度推送 | Server-Sent Events (SSE) |
-| 前端 | HTML + CSS + JavaScript |
+| 进度推送 | Server-Sent Events (SSE)                |
+| 前端   | HTML + CSS + JavaScript                 |
 
 ## 📁 项目结构
 
@@ -48,36 +48,36 @@ pip install -r requirements.txt
 python app.py
 ```
 
-访问 http://127.0.0.1:5000
+访问 <http://127.0.0.1:5000>
 
 ## 🌍 支持的网站
 
 ### ✅ 无需登录即可提取
 
-| 网站 | 提取内容 | 说明 |
-|------|----------|------|
-| **GitHub** | 仓库文件、Release资源、代码文件 | 支持Repo/Release/Blob页面 |
-| **CSDN** | 博客文章图片 | 自动提取博文中的全部图片 |
-| **酷狗音乐** | 歌曲封面、排行榜图片 | 首页及歌曲页面 |
-| **网易云音乐** | 歌曲封面、歌手图片 | 通过API获取歌曲详情 |
-| **酷安** | 帖子图片 | 自动去除缩略图后缀获取原图 |
-| **快手** | 短视频/封面 | 解析 `__APOLLO_STATE__` |
-| **Lofter** | 博客图片 | 解析CDN图片URL |
-| **小红书** | 笔记图片/视频 | 解析 `__INITIAL_STATE__`，私密笔记需Cookie |
-| **B站** | 视频/音频流 | 未登录480P，提供SESSDATA可获取1080P+ |
+| 网站         | 提取内容                | 说明                                 |
+| ---------- | ------------------- | ---------------------------------- |
+| **GitHub** | 仓库文件、Release资源、代码文件 | 支持Repo/Release/Blob页面              |
+| **CSDN**   | 博客文章图片              | 自动提取博文中的全部图片                       |
+| **酷狗音乐**   | 歌曲封面、排行榜图片          | 首页及歌曲页面                            |
+| **网易云音乐**  | 歌曲封面、歌手图片           | 通过API获取歌曲详情                        |
+| **酷安**     | 帖子图片                | 自动去除缩略图后缀获取原图                      |
+| **快手**     | 短视频/封面              | 解析 `__APOLLO_STATE__`              |
+| **Lofter** | 博客图片                | 解析CDN图片URL                         |
+| **小红书**    | 笔记图片/视频             | 解析 `__INITIAL_STATE__`，私密笔记需Cookie |
+| **B站**     | 视频/音频流              | 未登录480P，提供SESSDATA可获取1080P+        |
 
 ### 🔑 需要登录Cookie才能提取
 
-| 网站 | 关键Cookie字段 | 提取内容 |
-|------|---------------|----------|
-| **知乎** | `_xsrf`、`z_c0` | 专栏文章图片/视频（未登录返回403） |
-| **百度贴吧** | `BDUSS` | 帖子图片（未登录返回403） |
-| **抖音** | `ttwid`、`msToken` | 短视频/图集（JS加密页面） |
-| **微博** | `SUB` | 微博原图/视频 |
-| **Pixiv** | `PHPSESSID` | 插画原图 |
-| **Twitter/X** | `auth_token`、`ct0` | 推文图片/视频 |
-| **Instagram** | `sessionid` | 帖子图片/视频 |
-| **Pinterest** | `_pinterest_sess` | Pin大图/视频 |
+| 网站            | 关键Cookie字段         | 提取内容                |
+| ------------- | ------------------ | ------------------- |
+| **知乎**        | `_xsrf`、`z_c0`     | 专栏文章图片/视频（未登录返回403） |
+| **百度贴吧**      | `BDUSS`            | 帖子图片（未登录返回403）      |
+| **抖音**        | `ttwid`、`msToken`  | 短视频/图集（JS加密页面）      |
+| **微博**        | `SUB`              | 微博原图/视频             |
+| **Pixiv**     | `PHPSESSID`        | 插画原图                |
+| **Twitter/X** | `auth_token`、`ct0` | 推文图片/视频             |
+| **Instagram** | `sessionid`        | 帖子图片/视频             |
+| **Pinterest** | `_pinterest_sess`  | Pin大图/视频            |
 
 ### 提取策略
 
@@ -111,13 +111,14 @@ ffmpeg -i 视频流.mp4 -i 音频流.m4a -c copy 输出.mp4
 
 > 💡 **快捷方式**：也可以在 **Network（网络）** 标签中，随便点一个请求，在请求头 Request Headers 里找到 `Cookie:` 行，复制整行内容粘贴到输入框。工具会自动解析。
 
----
+***
 
 ### 🎬 B站 (SESSDATA)
 
 **用途**：未登录仅能获取 480P/360P 视频，登录后可获取 1080P60/1080P/720P。
 
 **获取步骤**：
+
 1. 登录 [bilibili.com](https://www.bilibili.com)
 2. F12 → Application → Cookies → `https://www.bilibili.com`
 3. 找到 **SESSDATA**，复制其 Value 值
@@ -127,13 +128,14 @@ ffmpeg -i 视频流.mp4 -i 音频流.m4a -c copy 输出.mp4
 
 > ⚠️ SESSDATA 有效期约 30 天，过期需重新获取。
 
----
+***
 
 ### 📕 小红书 (Cookie)
 
 **用途**：获取笔记真实图片/视频（无Cookie只能看到Logo占位图）。
 
 **获取步骤**：
+
 1. 登录 [xiaohongshu.com](https://www.xiaohongshu.com)
 2. 打开任意一篇笔记页面
 3. F12 → Network → 刷新页面 → 点击第一个HTML请求
@@ -141,17 +143,19 @@ ffmpeg -i 视频流.mp4 -i 音频流.m4a -c copy 输出.mp4
 5. 粘贴到「小红书 Cookie」输入框
 
 **也可以只粘贴关键字段**：
+
 - 找到 Cookie 中的 `a1=xxxxx` 部分，只复制 `xxxxx` 值即可
 
 **示例值**：`a1=1892abc3d4e5f6...; webId=xxx; ...` 或仅 `1892abc3d4e5f6`
 
----
+***
 
 ### 📱 微博 (Cookie)
 
 **用途**：获取微博正文图片（原图大图）和视频。无Cookie可能只能获取有限资源。
 
 **获取步骤**：
+
 1. 登录 [weibo.com](https://weibo.com)
 2. F12 → Application → Cookies → `https://weibo.com`
 3. 找到 **SUB** 字段，复制其 Value 值
@@ -161,13 +165,14 @@ ffmpeg -i 视频流.mp4 -i 音频流.m4a -c copy 输出.mp4
 
 **示例值**：`_2A25xxx...`（SUB字段的值）
 
----
+***
 
 ### 🎓 知乎 (Cookie)
 
 **用途**：知乎对未登录用户直接返回 403，必须提供Cookie才能访问。
 
 **获取步骤**：
+
 1. 登录 [zhihu.com](https://www.zhihu.com)
 2. F12 → Network → 刷新页面 → 点击任意请求
 3. 在 Request Headers 中找到 `Cookie:` 行，**复制整行**
@@ -177,13 +182,14 @@ ffmpeg -i 视频流.mp4 -i 音频流.m4a -c copy 输出.mp4
 
 **示例值**：`_xsrf=abc123; z_c0=2|1:0|10:...; ...`
 
----
+***
 
 ### 🎵 抖音 (Cookie)
 
 **用途**：抖音对未登录用户使用JS加密，无法从HTML中提取内容。提供Cookie后可通过API获取视频。
 
 **获取步骤**：
+
 1. 登录 [douyin.com](https://www.douyin.com)
 2. F12 → Network → 刷新页面 → 点击任意请求
 3. 在 Request Headers 中找到 `Cookie:` 行，**复制整行**
@@ -193,13 +199,14 @@ ffmpeg -i 视频流.mp4 -i 音频流.m4a -c copy 输出.mp4
 
 **示例值**：`ttwid=xxx; msToken=xxx; sessionid=xxx; ...`
 
----
+***
 
 ### 🎨 Pixiv (Cookie)
 
 **用途**：获取Pixiv插画原图。无Cookie只能获取首页缩略图。
 
 **获取步骤**：
+
 1. 登录 [pixiv.net](https://www.pixiv.net)
 2. F12 → Application → Cookies → `https://www.pixiv.net`
 3. 找到 **PHPSESSID**，复制其 Value 值
@@ -209,13 +216,14 @@ ffmpeg -i 视频流.mp4 -i 音频流.m4a -c copy 输出.mp4
 
 **示例值**：`12345678_abcdef0123456789` 或仅 `12345678_abcdef`
 
----
+***
 
 ### 🐦 Twitter/X (Cookie)
 
 **用途**：获取推文中的图片/视频原始质量。无Cookie只能获取首页少量资源。
 
 **获取步骤**：
+
 1. 登录 [x.com](https://x.com)
 2. F12 → Network → 刷新页面 → 点击任意 `api/graphql` 请求
 3. 在 Request Headers 中找到 `Cookie:` 行，**复制整行**
@@ -225,13 +233,14 @@ ffmpeg -i 视频流.mp4 -i 音频流.m4a -c copy 输出.mp4
 
 **示例值**：`auth_token=abc123; ct0=xyz789; ...`
 
----
+***
 
 ### 📸 Instagram (Cookie)
 
 **用途**：获取帖子图片/视频。无Cookie几乎无法提取内容。
 
 **获取步骤**：
+
 1. 登录 [instagram.com](https://www.instagram.com)
 2. F12 → Network → 刷新页面 → 点击任意请求
 3. 在 Request Headers 中找到 `Cookie:` 行，**复制整行**
@@ -241,13 +250,14 @@ ffmpeg -i 视频流.mp4 -i 音频流.m4a -c copy 输出.mp4
 
 **示例值**：`sessionid=12345%3Aabc%3A12; ds_user_id=12345; ...`
 
----
+***
 
 ### 📌 Pinterest (Cookie)
 
 **用途**：获取Pin大图和视频。无Cookie只能获取首页缩略图。
 
 **获取步骤**：
+
 1. 登录 [pinterest.com](https://www.pinterest.com)
 2. F12 → Network → 刷新页面 → 点击任意请求
 3. 在 Request Headers 中找到 `Cookie:` 行，**复制整行**
@@ -255,13 +265,14 @@ ffmpeg -i 视频流.mp4 -i 音频流.m4a -c copy 输出.mp4
 
 **示例值**：`_pinterest_sess=xxx; csrftoken=xxx; ...`
 
----
+***
 
 ### 💬 百度贴吧 (Cookie)
 
 **用途**：获取帖子中的图片。贴吧对未登录用户返回403。
 
 **获取步骤**：
+
 1. 登录 [tieba.baidu.com](https://tieba.baidu.com)
 2. F12 → Application → Cookies → `https://tieba.baidu.com`
 3. 找到 **BDUSS**，复制其 Value 值
@@ -275,17 +286,18 @@ ffmpeg -i 视频流.mp4 -i 音频流.m4a -c copy 输出.mp4
 
 ## 📡 API 接口
 
-| 端点 | 方法 | 说明 |
-|------|------|------|
-| `/` | GET | 主页面 |
-| `/api/analyze` | POST | 分析网页资源 |
-| `/api/download` | POST | 开始批量下载 |
+| 端点                       | 方法        | 说明     |
+| ------------------------ | --------- | ------ |
+| `/`                      | GET       | 主页面    |
+| `/api/analyze`           | POST      | 分析网页资源 |
+| `/api/download`          | POST      | 开始批量下载 |
 | `/api/download/progress` | GET (SSE) | 下载进度推送 |
-| `/api/download/cancel` | POST | 取消下载任务 |
+| `/api/download/cancel`   | POST      | 取消下载任务 |
 
 ### 请求示例
 
 **分析网页**
+
 ```bash
 curl -X POST http://127.0.0.1:5000/api/analyze \
   -H "Content-Type: application/json" \
@@ -293,6 +305,7 @@ curl -X POST http://127.0.0.1:5000/api/analyze \
 ```
 
 **带Cookie分析**
+
 ```bash
 curl -X POST http://127.0.0.1:5000/api/analyze \
   -H "Content-Type: application/json" \
@@ -300,6 +313,7 @@ curl -X POST http://127.0.0.1:5000/api/analyze \
 ```
 
 **开始下载**
+
 ```bash
 curl -X POST http://127.0.0.1:5000/api/download \
   -H "Content-Type: application/json" \
