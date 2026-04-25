@@ -30,9 +30,20 @@ def analyze():
     if not url.startswith(('http://', 'https://')):
         url = 'https://' + url
 
-    result = fetch_page(url)
+    cookies = data.get('cookies', {})
+    result = fetch_page(url, cookies=cookies)
 
-    if result['html'] is None:
+    html = result.get('html')
+    final_url = result.get('final_url', url)
+
+    if html is None:
+        extracted = run_extractors(final_url, '', cookies=cookies)
+        if extracted:
+            return jsonify({
+                'resources': extracted,
+                'page_title': '',
+                'final_url': final_url,
+            })
         error_msg = result.get('error', '无法访问该网页')
         return jsonify({'error': f'网页获取失败: {error_msg}'}), 400
 

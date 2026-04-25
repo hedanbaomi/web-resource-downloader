@@ -7,7 +7,7 @@ BROWSER_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
     'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-    'Accept-Encoding': 'gzip, deflate, br',
+    'Accept-Encoding': 'gzip, deflate',
     'Connection': 'keep-alive',
     'Upgrade-Insecure-Requests': '1',
 }
@@ -25,9 +25,37 @@ for exts in RESOURCE_EXTENSIONS.values():
     ALL_RESOURCE_EXTENSIONS.update(exts)
 
 
-def fetch_page(url):
+def fetch_page(url, cookies=None):
+    session = requests.Session()
+    session.headers.update(BROWSER_HEADERS)
+    session.headers.update({
+        'Sec-Ch-Ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+        'Sec-Ch-Ua-Mobile': '?0',
+        'Sec-Ch-Ua-Platform': '"Windows"',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
+        'Cache-Control': 'max-age=0',
+    })
+    host = (urlparse(url).hostname or '').lower()
+    site_cookies = {}
+    if cookies and isinstance(cookies, dict):
+        site_cookies = cookies
+    if host and 'zhihu.com' in host:
+        site_cookies.setdefault('_xsrf', 'dummy')
+        session.headers['Cookie'] = '; '.join(f'{k}={v}' for k, v in site_cookies.items()) if site_cookies else ''
+        session.headers['Referer'] = 'https://www.zhihu.com/'
+    elif host and 'weibo.com' in host:
+        session.headers['Referer'] = 'https://weibo.com/'
+        if site_cookies:
+            session.headers['Cookie'] = '; '.join(f'{k}={v}' for k, v in site_cookies.items())
+    elif host and 'douyin.com' in host:
+        session.headers['Referer'] = 'https://www.douyin.com/'
+    elif site_cookies:
+        session.headers['Cookie'] = '; '.join(f'{k}={v}' for k, v in site_cookies.items())
     try:
-        response = requests.get(url, headers=BROWSER_HEADERS, timeout=30, allow_redirects=True)
+        response = session.get(url, timeout=30, allow_redirects=True)
         response.raise_for_status()
         if response.encoding and response.encoding.lower() != 'utf-8':
             response.encoding = response.apparent_encoding

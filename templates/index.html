@@ -28,17 +28,40 @@
                 </button>
                 <div class="cookie-inputs" id="cookieInputs" style="display:none;">
                     <div class="cookie-hint">
-                        提供网站Cookie可获取更多资源。在浏览器中登录网站后，按F12 → Application → Cookies，复制对应值填入下方。
+                        部分网站需要Cookie才能提取资源。在浏览器中登录网站后，按F12 → Application → Cookies，复制对应值填入下方。
                     </div>
                     <div class="cookie-field">
                         <label for="sessdataInput">B站 SESSDATA：</label>
-                        <input type="text" id="sessdataInput" placeholder="粘贴B站 SESSDATA 值（获取1080P+画质）"
+                        <input type="text" id="sessdataInput" placeholder="获取1080P+画质需要登录Cookie"
                                autocomplete="off" spellcheck="false">
                     </div>
                     <div class="cookie-field">
                         <label for="xhsCookieInput">小红书 Cookie：</label>
-                        <input type="text" id="xhsCookieInput" placeholder="粘贴小红书完整 Cookie 或 a1 值"
+                        <input type="text" id="xhsCookieInput" placeholder="粘贴完整Cookie或a1值"
                                autocomplete="off" spellcheck="false">
+                    </div>
+                    <div class="cookie-field">
+                        <label for="weiboCookieInput">微博 Cookie：</label>
+                        <input type="text" id="weiboCookieInput" placeholder="粘贴微博Cookie（SUB字段）"
+                               autocomplete="off" spellcheck="false">
+                    </div>
+                    <div class="cookie-field">
+                        <label for="zhihuCookieInput">知乎 Cookie：</label>
+                        <input type="text" id="zhihuCookieInput" placeholder="粘贴知乎Cookie"
+                               autocomplete="off" spellcheck="false">
+                    </div>
+                    <div class="cookie-field">
+                        <label for="douyinCookieInput">抖音 Cookie：</label>
+                        <input type="text" id="douyinCookieInput" placeholder="粘贴抖音Cookie（需要ttwidmsToken）"
+                               autocomplete="off" spellcheck="false">
+                    </div>
+                    <div class="cookie-field">
+                        <label for="pixivCookieInput">Pixiv Cookie：</label>
+                        <input type="text" id="pixivCookieInput" placeholder="粘贴Pixiv Cookie（PHPSESSID）"
+                               autocomplete="off" spellcheck="false">
+                    </div>
+                    <div class="cookie-hint" style="margin-top:4px;font-size:12px;color:#999;">
+                        其他国际网站（Twitter/Instagram/Pinterest）同样需要登录Cookie才能提取内容
                     </div>
                 </div>
             </div>

@@ -25,12 +25,10 @@ function toggleCookieSection() {
 }
 
 function getCookies() {
-    const sessdata = document.getElementById('sessdataInput').value.trim();
-    const xhsCookie = document.getElementById('xhsCookieInput').value.trim();
     const cookies = {};
-    if (sessdata) {
-        cookies.SESSDATA = sessdata;
-    }
+    const sessdata = document.getElementById('sessdataInput').value.trim();
+    if (sessdata) cookies.SESSDATA = sessdata;
+    const xhsCookie = document.getElementById('xhsCookieInput').value.trim();
     if (xhsCookie) {
         if (xhsCookie.includes('=')) {
             xhsCookie.split(';').forEach(part => {
@@ -43,6 +41,66 @@ function getCookies() {
             });
         } else {
             cookies.a1 = xhsCookie;
+        }
+    }
+    const weiboCookie = document.getElementById('weiboCookieInput').value.trim();
+    if (weiboCookie) {
+        if (weiboCookie.includes('=')) {
+            weiboCookie.split(';').forEach(part => {
+                const eq = part.indexOf('=');
+                if (eq > 0) {
+                    const key = part.substring(0, eq).trim();
+                    const val = part.substring(eq + 1).trim();
+                    if (key && val) cookies['weibo_' + key] = val;
+                }
+            });
+        } else {
+            cookies.weibo_SUB = weiboCookie;
+        }
+    }
+    const zhihuCookie = document.getElementById('zhihuCookieInput').value.trim();
+    if (zhihuCookie) {
+        if (zhihuCookie.includes('=')) {
+            zhihuCookie.split(';').forEach(part => {
+                const eq = part.indexOf('=');
+                if (eq > 0) {
+                    const key = part.substring(0, eq).trim();
+                    const val = part.substring(eq + 1).trim();
+                    if (key && val) cookies['zhihu_' + key] = val;
+                }
+            });
+        } else {
+            cookies.zhihu_cookie = zhihuCookie;
+        }
+    }
+    const douyinCookie = document.getElementById('douyinCookieInput').value.trim();
+    if (douyinCookie) {
+        if (douyinCookie.includes('=')) {
+            douyinCookie.split(';').forEach(part => {
+                const eq = part.indexOf('=');
+                if (eq > 0) {
+                    const key = part.substring(0, eq).trim();
+                    const val = part.substring(eq + 1).trim();
+                    if (key && val) cookies['douyin_' + key] = val;
+                }
+            });
+        } else {
+            cookies.douyin_cookie = douyinCookie;
+        }
+    }
+    const pixivCookie = document.getElementById('pixivCookieInput').value.trim();
+    if (pixivCookie) {
+        if (pixivCookie.includes('=')) {
+            pixivCookie.split(';').forEach(part => {
+                const eq = part.indexOf('=');
+                if (eq > 0) {
+                    const key = part.substring(0, eq).trim();
+                    const val = part.substring(eq + 1).trim();
+                    if (key && val) cookies['pixiv_' + key] = val;
+                }
+            });
+        } else {
+            cookies.pixiv_PHPSESSID = pixivCookie;
         }
     }
     return cookies;
