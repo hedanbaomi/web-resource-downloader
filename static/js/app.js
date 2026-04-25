@@ -26,9 +26,24 @@ function toggleCookieSection() {
 
 function getCookies() {
     const sessdata = document.getElementById('sessdataInput').value.trim();
+    const xhsCookie = document.getElementById('xhsCookieInput').value.trim();
     const cookies = {};
     if (sessdata) {
         cookies.SESSDATA = sessdata;
+    }
+    if (xhsCookie) {
+        if (xhsCookie.includes('=')) {
+            xhsCookie.split(';').forEach(part => {
+                const eq = part.indexOf('=');
+                if (eq > 0) {
+                    const key = part.substring(0, eq).trim();
+                    const val = part.substring(eq + 1).trim();
+                    if (key && val) cookies[key] = val;
+                }
+            });
+        } else {
+            cookies.a1 = xhsCookie;
+        }
     }
     return cookies;
 }

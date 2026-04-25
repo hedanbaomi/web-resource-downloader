@@ -28,11 +28,16 @@
                 </button>
                 <div class="cookie-inputs" id="cookieInputs" style="display:none;">
                     <div class="cookie-hint">
-                        提供B站等网站的Cookie可获取更高画质的视频。B站在浏览器中登录后，按F12打开开发者工具 → Application → Cookies，复制 <code>SESSDATA</code> 的值填入下方。
+                        提供网站Cookie可获取更多资源。在浏览器中登录网站后，按F12 → Application → Cookies，复制对应值填入下方。
                     </div>
                     <div class="cookie-field">
-                        <label for="sessdataInput">SESSDATA：</label>
-                        <input type="text" id="sessdataInput" placeholder="粘贴B站的 SESSDATA Cookie 值"
+                        <label for="sessdataInput">B站 SESSDATA：</label>
+                        <input type="text" id="sessdataInput" placeholder="粘贴B站 SESSDATA 值（获取1080P+画质）"
+                               autocomplete="off" spellcheck="false">
+                    </div>
+                    <div class="cookie-field">
+                        <label for="xhsCookieInput">小红书 Cookie：</label>
+                        <input type="text" id="xhsCookieInput" placeholder="粘贴小红书完整 Cookie 或 a1 值"
                                autocomplete="off" spellcheck="false">
                     </div>
                 </div>

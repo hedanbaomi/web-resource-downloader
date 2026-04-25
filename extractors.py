@@ -265,6 +265,220 @@ class BilibiliExtractor:
         return []
 
 
+XHS_HEADERS = {
+    **BROWSER_HEADERS,
+    'Referer': 'https://www.xiaohongshu.com',
+    'Origin': 'https://www.xiaohongshu.com',
+}
+
+XHS_IMAGE_SCENE_PRIORITY = ['WB_DFT', 'WB_PRV']
+
+
+class XhsExtractor:
+    def __init__(self, cookies=None):
+        self.cookies = cookies or {}
+
+    def _build_headers(self):
+        headers = dict(XHS_HEADERS)
+        if self.cookies:
+            cookie_str = '; '.join(f'{k}={v}' for k, v in self.cookies.items() if v)
+            if cookie_str:
+                headers['Cookie'] = cookie_str
+        return headers
+
+    def match(self, url):
+        parsed = urlparse(url)
+        host = (parsed.hostname or '').lower()
+        return 'xiaohongshu.com' in host or 'xhslink.com' in host
+
+    def extract(self, url, html=''):
+        resources = []
+
+        note_id = self._parse_url(url)
+        if not note_id:
+            return resources
+
+        initial_state = self._parse_initial_state(html)
+        notes_data = None
+
+        if initial_state:
+            notes_data = self._get_note_from_state(initial_state, note_id)
+
+        if not notes_data:
+            notes_data = self._fetch_note_api(note_id)
+
+        if not notes_data:
+            return resources
+
+        note = notes_data.get('note', notes_data)
+        title = note.get('title', note_id)
+        safe_title = re.sub(r'[<>:"/\\|?*]', '_', title) if title else note_id
+        note_type = note.get('type', 'normal')
+
+        if note_type == 'video':
+            video_resources = self._extract_video(note, safe_title)
+            resources.extend(video_resources)
+
+        image_resources = self._extract_images(note, safe_title)
+        resources.extend(image_resources)
+
+        return resources
+
+    def _parse_url(self, url):
+        match = re.search(r'/explore/([a-f0-9]+)', url)
+        if match:
+            return match.group(1)
+        match = re.search(r'/discovery/item/([a-f0-9]+)', url)
+        if match:
+            return match.group(1)
+        match = re.search(r'/note/([a-f0-9]+)', url)
+        if match:
+            return match.group(1)
+        return None
+
+    def _parse_initial_state(self, html):
+        if not html:
+            return None
+        match = re.search(r'window\.__INITIAL_STATE__\s*=\s*\{', html)
+        if not match:
+            return None
+
+        start = match.end() - 1
+        end = html.find('</script>', start)
+        if end == -1:
+            return None
+
+        raw = html[start:end].strip().rstrip(';').strip()
+        raw = re.sub(r'\bundefined\b', 'null', raw)
+
+        try:
+            return json.loads(raw)
+        except (json.JSONDecodeError, ValueError):
+            return None
+
+    def _get_note_from_state(self, state, note_id):
+        try:
+            note_map = state.get('note', {}).get('noteDetailMap', {})
+            if note_id in note_map:
+                return note_map[note_id]
+            for nid, ndata in note_map.items():
+                if isinstance(ndata, dict):
+                    return ndata
+        except Exception:
+            pass
+        return None
+
+    def _fetch_note_api(self, note_id):
+        return None
+
+    def _extract_images(self, note, title):
+        resources = []
+        seen_urls = set()
+        image_list = note.get('imageList', [])
+
+        for idx, img in enumerate(image_list):
+            best_url = self._pick_best_image_url(img)
+            if not best_url or best_url in seen_urls:
+                continue
+            seen_urls.add(best_url)
+
+            url = self._normalize_image_url(best_url)
+
+            is_live = img.get('livePhoto', False)
+            suffix = f'_LivePhoto' if is_live else ''
+
+            ext = '.jpg'
+            if '!nd_dft_wlteh_webp' in url or '!nd_prv_wlteh_webp' in url:
+                ext = '.webp'
+            elif '.png' in url.split('!')[0]:
+                ext = '.png'
+
+            resources.append({
+                'url': url,
+                'name': f'{title}_图片{idx + 1}{suffix}{ext}',
+                'category': 'image',
+                'extension': ext,
+                'headers': self._build_headers(),
+            })
+
+        return resources
+
+    def _pick_best_image_url(self, img):
+        url_default = img.get('urlDefault', '') or img.get('url', '')
+        if url_default:
+            return url_default
+
+        info_list = img.get('infoList', [])
+        if not info_list:
+            return ''
+
+        for scene in XHS_IMAGE_SCENE_PRIORITY:
+            for info in info_list:
+                if info.get('imageScene') == scene and info.get('url'):
+                    return info['url']
+
+        for info in info_list:
+            if info.get('url'):
+                return info['url']
+
+        return ''
+
+    def _normalize_image_url(self, url):
+        if url.startswith('http://'):
+            url = 'https://' + url[len('http://'):]
+        if 'xhscdn.com' in url and '!' not in url:
+            url += '!nd_dft_wlteh_webp_3'
+        return url
+
+    def _extract_video(self, note, title):
+        resources = []
+        video = note.get('video', {})
+        if not video:
+            return resources
+
+        consumer = video.get('consumer', {})
+        origin_video_key = consumer.get('originVideoKey', '')
+        if origin_video_key:
+            video_url = self._normalize_video_url(origin_video_key)
+            resources.append({
+                'url': video_url,
+                'name': f'{title}_视频_原画.mp4',
+                'category': 'video',
+                'extension': '.mp4',
+                'headers': self._build_headers(),
+            })
+
+        video_key = video.get('key', '')
+        if video_key and video_key != origin_video_key:
+            video_url = self._normalize_video_url(video_key)
+            resources.append({
+                'url': video_url,
+                'name': f'{title}_视频.mp4',
+                'category': 'video',
+                'extension': '.mp4',
+                'headers': self._build_headers(),
+            })
+
+        url_default = video.get('urlDefault', '') or video.get('url', '')
+        if url_default and url_default not in [r['url'] for r in resources]:
+            if url_default.startswith('http://'):
+                url_default = 'https://' + url_default[len('http://'):]
+            resources.append({
+                'url': url_default,
+                'name': f'{title}_视频_默认.mp4',
+                'category': 'video',
+                'extension': '.mp4',
+                'headers': self._build_headers(),
+            })
+
+        return resources
+
+    def _normalize_video_url(self, key):
+        if key.startswith('http'):
+            return key
+        return f'https://sns-video-al.xhscdn.com/{key}'
+
+
 def extract_og_media(html):
     from bs4 import BeautifulSoup
     resources = []
@@ -372,7 +586,7 @@ def run_extractors(url, html='', cookies=None):
     seen_urls = set()
 
     cookie_dict = cookies or {}
-    extractors = [BilibiliExtractor(cookies=cookie_dict)]
+    extractors = [BilibiliExtractor(cookies=cookie_dict), XhsExtractor(cookies=cookie_dict)]
 
     for extractor in extractors:
         if extractor.match(url):
