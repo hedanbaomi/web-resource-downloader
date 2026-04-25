@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>网页资源下载器</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🌐 网页资源下载器</h1>
+            <p class="subtitle">输入网址，发现并批量下载网页中的所有资源</p>
+        </header>
+
+        <section class="input-section">
+            <div class="url-input-group">
+                <input type="text" id="urlInput" placeholder="请输入网址，例如：https://example.com"
+                       autocomplete="off" spellcheck="false">
+                <button id="analyzeBtn" onclick="analyzeUrl()">
+                    <span class="btn-text">🔍 分析</span>
+                    <span class="btn-loading" style="display:none;">⏳ 分析中...</span>
+                </button>
+            </div>
+        </section>
+
+        <section id="resultSection" class="result-section" style="display:none;">
+            <div class="page-info">
+                <h2 id="pageTitle"></h2>
+                <span id="pageUrl" class="page-url"></span>
+            </div>
+
+            <div class="toolbar">
+                <div class="category-tabs">
+                    <button class="tab active" data-category="all" onclick="filterByCategory('all', this)">
+                        全部 <span class="count" id="countAll">0</span>
+                    </button>
+                    <button class="tab" data-category="document" onclick="filterByCategory('document', this)">
+                        📄 文档 <span class="count" id="countDocument">0</span>
+                    </button>
+                    <button class="tab" data-category="video" onclick="filterByCategory('video', this)">
+                        🎬 视频 <span class="count" id="countVideo">0</span>
+                    </button>
+                    <button class="tab" data-category="audio" onclick="filterByCategory('audio', this)">
+                        🎵 音频 <span class="count" id="countAudio">0</span>
+                    </button>
+                    <button class="tab" data-category="image" onclick="filterByCategory('image', this)">
+                        🖼️ 图片 <span class="count" id="countImage">0</span>
+                    </button>
+                    <button class="tab" data-category="archive" onclick="filterByCategory('archive', this)">
+                        📦 压缩包 <span class="count" id="countArchive">0</span>
+                    </button>
+                    <button class="tab" data-category="other" onclick="filterByCategory('other', this)">
+                        📎 其他 <span class="count" id="countOther">0</span>
+                    </button>
+                </div>
+                <div class="toolbar-actions">
+                    <label class="select-all-label">
+                        <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                        全选
+                    </label>
+                    <span id="selectedCount" class="selected-count">已选 0 项</span>
+                    <button id="downloadBtn" class="download-btn" onclick="startDownload()" disabled>
+                        ⬇ 批量下载
+                    </button>
+                </div>
+            </div>
+
+            <div class="resource-list" id="resourceList">
+                <table class="resource-table">
+                    <thead>
+                        <tr>
+                            <th class="col-check"></th>
+                            <th class="col-name">文件名</th>
+                            <th class="col-category">类型</th>
+                            <th class="col-extension">扩展名</th>
+                            <th class="col-url">链接</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resourceTableBody">
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="emptyState" class="empty-state" style="display:none;">
+                <p>📭 当前分类没有找到资源</p>
+            </div>
+        </section>
+
+        <section id="progressSection" class="progress-section" style="display:none;">
+            <div class="progress-card">
+                <h3>⬇ 下载进度</h3>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+                </div>
+                <div class="progress-info">
+                    <span id="progressText">0 / 0</span>
+                    <span id="progressPercent">0%</span>
+                </div>
+                <div class="progress-details">
+                    <span class="detail-success">✅ 成功: <span id="successCount">0</span></span>
+                    <span class="detail-failed">❌ 失败: <span id="failedCount">0</span></span>
+                    <span id="currentFile" class="detail-current"></span>
+                </div>
+                <button id="cancelDownloadBtn" class="cancel-btn" onclick="cancelDownload()">取消下载</button>
+            </div>
+        </section>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
