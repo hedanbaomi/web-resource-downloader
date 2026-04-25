@@ -177,7 +177,9 @@ def parse_resources(url, html):
 
     base_tag = soup.find('base', href=True)
     if base_tag:
-        final_url = base_tag['href']
+        base_href = base_tag['href'].strip()
+        if base_href and base_href.startswith(('http://', 'https://')):
+            final_url = base_href
 
     tag_attrs = [
         ('a', 'href'),

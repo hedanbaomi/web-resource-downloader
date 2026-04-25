@@ -61,23 +61,23 @@ python app.py
 | **酷狗音乐** | 歌曲封面、排行榜图片 | 首页及歌曲页面 |
 | **网易云音乐** | 歌曲封面、歌手图片 | 通过API获取歌曲详情 |
 | **酷安** | 帖子图片 | 自动去除缩略图后缀获取原图 |
-| **Pinterest** | Pin图片 | 提取original尺寸图片 |
-| **Pixiv** | 插画图片 | 需Cookie获取具体作品图 |
-| **Instagram** | 帖子图片/视频 | 需Cookie获取用户帖子 |
-| **Twitter/X** | 推文图片/视频 | 需Cookie获取推文内容 |
+| **快手** | 短视频/封面 | 解析 `__APOLLO_STATE__` |
+| **Lofter** | 博客图片 | 解析CDN图片URL |
+| **小红书** | 笔记图片/视频 | 解析 `__INITIAL_STATE__`，私密笔记需Cookie |
+| **B站** | 视频/音频流 | 未登录480P，提供SESSDATA可获取1080P+ |
 
-### 🔑 需要登录Cookie
+### 🔑 需要登录Cookie才能提取
 
-| 网站 | 所需Cookie | 提取内容 |
-|------|-----------|----------|
-| **B站** | SESSDATA | 视频/音频流（1080P60高画质） |
-| **小红书** | 完整Cookie或a1值 | 笔记图片/视频 |
-| **微博** | SUB | 微博图片/视频 |
-| **抖音** | ttwid / msToken | 短视频/图集 |
-| **快手** | — | 短视频/封面 |
-| **知乎** | _xsrf等 | 专栏文章图片/视频 |
-| **百度贴吧** | BDUSS | 帖子图片 |
-| **Lofter** | — | 博客图片 |
+| 网站 | 关键Cookie字段 | 提取内容 |
+|------|---------------|----------|
+| **知乎** | `_xsrf`、`z_c0` | 专栏文章图片/视频（未登录返回403） |
+| **百度贴吧** | `BDUSS` | 帖子图片（未登录返回403） |
+| **抖音** | `ttwid`、`msToken` | 短视频/图集（JS加密页面） |
+| **微博** | `SUB` | 微博原图/视频 |
+| **Pixiv** | `PHPSESSID` | 插画原图 |
+| **Twitter/X** | `auth_token`、`ct0` | 推文图片/视频 |
+| **Instagram** | `sessionid` | 帖子图片/视频 |
+| **Pinterest** | `_pinterest_sess` | Pin大图/视频 |
 
 ### 提取策略
 
@@ -89,33 +89,13 @@ python app.py
 4. **og:meta** — 提取 OpenGraph 标签中的媒体URL
 5. **通用抓取** — 解析所有 `<img>`、`<video>`、`<a>` 标签
 
-## 🎬 B站视频下载指南
-
-### 基本用法
-
-直接输入B站视频链接（如 `https://www.bilibili.com/video/BV1xxxx`）。
-
-**未登录**：480P、360P | **登录后**：1080P60、1080P、720P 等
-
-### 获取高画质
-
-1. 浏览器登录 bilibili.com → F12 → Application → Cookies
-2. 复制 **SESSDATA** 值
-3. 粘贴到工具「🍪 网站Cookie设置」的B站输入框
-
-### DASH 合并
+### B站DASH视频合并说明
 
 B站 DASH 格式视频/音频分离，需 ffmpeg 合并：
 
 ```bash
 ffmpeg -i 视频流.mp4 -i 音频流.m4a -c copy 输出.mp4
 ```
-
-## 📕 小红书笔记下载指南
-
-直接输入笔记链接即可提取全部图片/视频。工具解析 `__INITIAL_STATE__` 获取真实CDN地址，而非Logo占位图。
-
-如遇私密笔记，提供小红书Cookie即可。
 
 ## 🍪 Cookie设置说明
 
