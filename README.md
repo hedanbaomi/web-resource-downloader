@@ -186,19 +186,34 @@ ffmpeg -i 视频流.mp4 -i 音频流.m4a -c copy 输出.mp4
 
 ***
 
-### 🎵 抖音 (Cookie)
+### 🎵 抖音
 
-**用途**：抖音对未登录用户使用JS加密，无法从HTML中提取内容。提供Cookie后可通过API获取视频。
+抖音使用JS虚拟机加密页面，是最难直接抓取的平台之一。工具采用**六重回退策略**：
+
+| 优先级 | 策略 | 说明 | 需要安装 |
+|--------|------|------|----------|
+| 1 | 社区解析API | 通过第三方解析服务获取视频 | 无 |
+| 2 | 社区解析API(2) | 备用解析服务 | 无 |
+| 3 | **Playwright浏览器** | 启动真实浏览器提取数据（**推荐**） | `pip install playwright && playwright install chromium` |
+| 4 | 官方API+Cookie | 提供登录Cookie后调用官方API | 需Cookie |
+| 5 | 页面SSR数据 | 尝试从HTML提取路由数据 | 无 |
+| 6 | CDN模式匹配 | 正则匹配douyinvod CDN链接 | 无 |
+
+**推荐方案**：安装 Playwright 后无需Cookie即可下载：
+```bash
+pip install playwright
+playwright install chromium
+```
+
+**Cookie方案**（备选）：如果不想安装Playwright，提供浏览器Cookie也可。
 
 **获取步骤**：
-
 1. 登录 [douyin.com](https://www.douyin.com)
 2. F12 → Network → 刷新页面 → 点击任意请求
 3. 在 Request Headers 中找到 `Cookie:` 行，**复制整行**
 4. 粘贴到「抖音 Cookie」输入框
 
-**关键Cookie字段**：`ttwid`、`msToken`、`sessionid`，工具会自动解析整段Cookie。
-
+**关键Cookie字段**：`ttwid`、`msToken`、`sessionid`，工具会自动解析。
 **示例值**：`ttwid=xxx; msToken=xxx; sessionid=xxx; ...`
 
 ***

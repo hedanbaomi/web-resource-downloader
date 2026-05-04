@@ -458,20 +458,29 @@ class DouyinExtractor:
         resources = []
         aweme_id = self._parse_url(url)
         if aweme_id:
-            api_data = self._fetch_aweme_detail(aweme_id)
-            if api_data:
-                resources.extend(self._extract_from_api(api_data))
+            resources = self._try_all_methods(aweme_id, url, html)
         if not resources:
-            state = self._parse_router_data(html)
-            if state:
-                resources.extend(self._extract_from_state(state))
-        if not resources:
-            resources.extend(self._extract_ssr_html(html))
-        og = self._extract_og_media(html)
-        for r in og:
-            if r['url'] not in [x['url'] for x in resources]:
-                resources.append(r)
+            resources = self._try_all_methods(None, url, html)
         return resources
+
+    def _try_all_methods(self, aweme_id, url, html):
+        dl_headers = {**BROWSER_HEADERS, 'Referer': 'https://www.douyin.com/'}
+        strategies = [
+            ('community_api', lambda: self._try_community_api(aweme_id or self._parse_url_fallback(url), dl_headers)),
+            ('community_api2', lambda: self._try_community_api2(aweme_id or self._parse_url_fallback(url), url, dl_headers)),
+            ('playwright', lambda: self._try_playwright(url, dl_headers)),
+            ('official_api', lambda: self._try_official_api(aweme_id or self._parse_url_fallback(url), dl_headers)),
+            ('router_data', lambda: self._extract_from_state_router(html, dl_headers)),
+            ('ssr_html', lambda: self._extract_ssr_html(html)),
+        ]
+        for name, fn in strategies:
+            try:
+                result = fn()
+                if result:
+                    return result
+            except Exception:
+                continue
+        return self._extract_og_media(html)
 
     def _parse_url(self, url):
         m = re.search(r'/video/(\d+)', url)
@@ -482,24 +491,153 @@ class DouyinExtractor:
             return m.group(1)
         return None
 
+    def _parse_url_fallback(self, url):
+        for pat in [r'/video/(\d+)', r'/note/(\d+)', r'/(\d{15,})']:
+            m = re.search(pat, url)
+            if m:
+                return m.group(1)
+        return ''
+
+    # ---- Strategy 1: Community API (tikwm.com) ----
+    def _try_community_api(self, aweme_id, dl_headers):
+        if not aweme_id:
+            return []
+        try:
+            resp = requests.get('https://www.tikwm.com/api/', params={'url': aweme_id}, headers={**BROWSER_HEADERS, 'Referer': 'https://www.tikwm.com/'}, timeout=15)
+            if resp.status_code != 200:
+                return []
+            data = resp.json()
+            if data.get('code') != 0:
+                return []
+            return self._parse_community_data(data, dl_headers)
+        except Exception:
+            return []
+
+    def _try_community_api2(self, aweme_id, original_url, dl_headers):
+        try:
+            target_url = original_url
+            if 'v.douyin.com' in original_url:
+                target_url = original_url
+            elif aweme_id:
+                target_url = f'https://www.douyin.com/video/{aweme_id}'
+            resp = requests.get('https://www.tikwm.com/api/', params={'url': target_url}, headers={**BROWSER_HEADERS, 'Referer': 'https://www.tikwm.com/'}, timeout=15)
+            if resp.status_code != 200:
+                return []
+            data = resp.json()
+            if data.get('code') != 0:
+                return []
+            return self._parse_community_data(data, dl_headers)
+        except Exception:
+            return []
+
+    def _parse_community_data(self, data, dl_headers):
+        resources = []
+        d = data.get('data', {})
+        video_url = d.get('play') or d.get('hdplay') or d.get('wmplay') or d.get('download')
+        if video_url:
+            if video_url.startswith('//'):
+                video_url = 'https:' + video_url
+            title = d.get('title', 'douyin_video')[:50]
+            safe = re.sub(r'[<>:"/\\|?*]', '_', title)
+            resources.append({'url': video_url, 'name': f'{safe}.mp4', 'category': 'video', 'extension': '.mp4', 'headers': dl_headers})
+        cover = d.get('cover') or d.get('origin_cover')
+        if cover:
+            if cover.startswith('//'):
+                cover = 'https:' + cover
+            resources.append({'url': cover, 'name': 'douyin_cover.jpg', 'category': 'image', 'extension': '.jpg', 'headers': dl_headers})
+        music = d.get('music') or d.get('music_info')
+        if isinstance(music, dict):
+            music_url = music.get('play_url') or music.get('play') or music.get('url')
+            if music_url:
+                if music_url.startswith('//'):
+                    music_url = 'https:' + music_url
+                music_name = music.get('title', 'douyin_music')[:50]
+                ext = '.mp3' if '.mp3' in music_url else '.m4a'
+                resources.append({'url': music_url, 'name': f'{music_name}{ext}', 'category': 'audio', 'extension': ext, 'headers': dl_headers})
+        images = d.get('images') or []
+        if isinstance(images, list):
+            for i, img in enumerate(images):
+                if isinstance(img, str):
+                    resources.append({'url': img, 'name': f'douyin_img_{i+1}.jpeg', 'category': 'image', 'extension': '.jpeg', 'headers': dl_headers})
+        return resources
+
+    # ---- Strategy 2: Playwright browser automation ----
+    def _try_playwright(self, url, dl_headers):
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            return []
+        try:
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                context = browser.new_context(viewport={'width': 1920, 'height': 1080})
+                page = context.new_page()
+                page.goto(url, wait_until='domcontentloaded', timeout=30000)
+                page.wait_for_timeout(3000)
+                data = page.evaluate('() => { try { return window._ROUTER_DATA; } catch(e) { return null; } }')
+                if data is None:
+                    data = page.evaluate('() => { try { var s = document.getElementById("RENDER_DATA"); return s ? decodeURIComponent(s.textContent) : null; } catch(e) { return null; } }')
+                    if data:
+                        import json
+                        data = json.loads(data)
+                browser.close()
+                if not data:
+                    return []
+                return self._extract_from_router(data, dl_headers)
+        except Exception:
+            return []
+
+    def _extract_from_router(self, state, dl_headers):
+        resources = []
+        if isinstance(state, str):
+            try:
+                import json
+                state = json.loads(state)
+            except:
+                return []
+        d_str = json.dumps(state, ensure_ascii=False)
+        video_urls = re.findall(r'(https?://[^\s"\'<>]+\.(?:mp4|mov|flv)[^\s"\'<>]*)', d_str)
+        if not video_urls:
+            video_urls = re.findall(r'"url_list"\s*:\s*\["([^"]+)"', d_str)
+        if not video_urls:
+            video_urls = re.findall(r'"playApi"\s*:\s*"([^"]+)"', d_str)
+        if not video_urls:
+            video_urls = re.findall(r'"play_addr".*?"url_list"\s*:\s*\["([^"]+)"', d_str)
+        for i, vurl in enumerate(video_urls[:5]):
+            vurl = vurl.replace('\\u002F', '/').replace('\\/', '/')
+            if vurl.startswith('//'):
+                vurl = 'https:' + vurl
+            resources.append({'url': vurl, 'name': f'douyin_video_{i + 1}.mp4', 'category': 'video', 'extension': '.mp4', 'headers': dl_headers})
+        cover_urls = re.findall(r'(https?://[^\s"\'<>]+douyinpic[^\s"\'<>]*\.(?:jpg|jpeg|webp)[^\s"\'<>]*)', d_str)
+        for i, curl in enumerate(cover_urls[:5]):
+            curl = curl.replace('\\u002F', '/').replace('\\/', '/')
+            if curl.startswith('//'):
+                curl = 'https:' + curl
+            ext = '.webp' if '.webp' in curl else '.jpg'
+            resources.append({'url': curl, 'name': f'douyin_cover_{i + 1}{ext}', 'category': 'image', 'extension': ext, 'headers': dl_headers})
+        return resources
+
+    # ---- Strategy 3: Official API (with cookies) ----
+    def _try_official_api(self, aweme_id, dl_headers):
+        if not aweme_id:
+            return []
+        api_data = self._fetch_aweme_detail(aweme_id)
+        if api_data:
+            return self._extract_from_official_api(api_data, dl_headers)
+        return []
+
     def _fetch_aweme_detail(self, aweme_id):
         try:
             api_url = 'https://www.douyin.com/aweme/v1/web/aweme/detail/'
-            params = {
-                'aweme_id': aweme_id,
-                'aid': '6383',
-                'cookie_enabled': 'true',
-            }
-            headers = {
-                **BROWSER_HEADERS,
-                'Referer': 'https://www.douyin.com/',
-                'Accept': 'application/json, text/plain, */*',
-            }
+            params = {'aweme_id': aweme_id, 'aid': '6383', 'cookie_enabled': 'true'}
+            headers = {**BROWSER_HEADERS, 'Referer': 'https://www.douyin.com/', 'Accept': 'application/json, text/plain, */*'}
             if self.cookies:
                 cookie_str = '; '.join(f'{k}={v}' for k, v in self.cookies.items() if v)
                 if cookie_str:
                     headers['Cookie'] = cookie_str
             resp = requests.get(api_url, params=params, headers=headers, timeout=15)
+            if not resp.text:
+                return None
             data = resp.json()
             if data.get('status_code') == 0:
                 return data.get('aweme_detail', {})
@@ -507,9 +645,8 @@ class DouyinExtractor:
             pass
         return None
 
-    def _extract_from_api(self, aweme):
+    def _extract_from_official_api(self, aweme, dl_headers):
         resources = []
-        dl_headers = {**BROWSER_HEADERS, 'Referer': 'https://www.douyin.com/'}
         video = aweme.get('video', {})
         play_addr = video.get('play_addr', {})
         url_list = play_addr.get('url_list', [])
@@ -537,6 +674,39 @@ class DouyinExtractor:
                 resources.append({'url': img_url, 'name': f'douyin_image_{i+1}.jpeg', 'category': 'image', 'extension': '.jpeg', 'headers': dl_headers})
         return resources
 
+    # ---- Strategy 4: Router data from HTML SSR ----
+    def _extract_from_state_router(self, html, dl_headers):
+        if not html or len(html) < 1000:
+            return []
+        state = self._parse_router_data(html)
+        if not state:
+            return []
+        resources = []
+        for key in state:
+            if 'video' in key.lower() or 'note' in key.lower() or 'post' in key.lower():
+                try:
+                    data = state[key]
+                    d_str = json.dumps(data, ensure_ascii=False)
+                    for pattern in [r'"url_list"\s*:\s*\["([^"]+)"', r'"play_addr".*?"url_list"\s*:\s*\["([^"]+)"', r'"playApi"\s*:\s*"([^"]+)"']:
+                        video_urls = re.findall(pattern, d_str)
+                        for vurl in video_urls[:5]:
+                            vurl = vurl.replace('\\u002F', '/').replace('\\/', '/')
+                            if vurl.startswith('//'):
+                                vurl = 'https:' + vurl
+                            if vurl not in [r['url'] for r in resources]:
+                                resources.append({'url': vurl, 'name': f'douyin_video_{len(resources) + 1}.mp4', 'category': 'video', 'extension': '.mp4', 'headers': dl_headers})
+                        if video_urls:
+                            break
+                    cover_urls = re.findall(r'"cover".*?"url_list"\s*:\s*\["([^"]+)"', d_str)
+                    for curl in cover_urls[:3]:
+                        curl = curl.replace('\\u002F', '/').replace('\\/', '/')
+                        if curl.startswith('//'):
+                            curl = 'https:' + curl
+                        resources.append({'url': curl, 'name': 'douyin_cover.jpg', 'category': 'image', 'extension': '.jpg', 'headers': dl_headers})
+                except Exception:
+                    pass
+        return resources
+
     def _parse_router_data(self, html):
         m = re.search(r'window\._ROUTER_DATA\s*=\s*(\{.+?)\s*</script>', html, re.DOTALL)
         if m:
@@ -547,35 +717,10 @@ class DouyinExtractor:
                 pass
         return None
 
-    def _extract_from_state(self, state):
-        resources = []
-        dl_headers = {**BROWSER_HEADERS, 'Referer': 'https://www.douyin.com/'}
-        for key in state:
-            if 'video' in key.lower() or 'note' in key.lower() or 'post' in key.lower():
-                try:
-                    data = state[key]
-                    d_str = json.dumps(data, ensure_ascii=False)
-                    video_urls = re.findall(r'"playAddr"\s*:\s*\{[^}]*"src"\s*:\s*"([^"]+)"', d_str)
-                    if not video_urls:
-                        video_urls = re.findall(r'"play_addr".*?"url_list"\s*:\s*\["([^"]+)"', d_str)
-                    if not video_urls:
-                        video_urls = re.findall(r'"playApi"\s*:\s*"([^"]+)"', d_str)
-                    for i, vurl in enumerate(video_urls[:5]):
-                        vurl = vurl.replace('\\u002F', '/').replace('\\/', '/')
-                        if vurl.startswith('//'):
-                            vurl = 'https:' + vurl
-                        resources.append({'url': vurl, 'name': f'douyin_video_{i + 1}.mp4', 'category': 'video', 'extension': '.mp4', 'headers': dl_headers})
-                    cover_urls = re.findall(r'"cover".*?"url_list"\s*:\s*\["([^"]+)"', d_str)
-                    for i, curl in enumerate(cover_urls[:3]):
-                        curl = curl.replace('\\u002F', '/').replace('\\/', '/')
-                        if curl.startswith('//'):
-                            curl = 'https:' + curl
-                        resources.append({'url': curl, 'name': f'douyin_cover_{i + 1}.jpg', 'category': 'image', 'extension': '.jpg', 'headers': dl_headers})
-                except Exception:
-                    pass
-        return resources
-
+    # ---- Strategy 5: SSR HTML CDN patterns ----
     def _extract_ssr_html(self, html):
+        if not html or len(html) < 1000:
+            return []
         resources = []
         dl_headers = {**BROWSER_HEADERS, 'Referer': 'https://www.douyin.com/'}
         video_urls = re.findall(r'(https?://[^\s"\'<>]+douyinvod[^\s"\'<>]*\.mp4[^\s"\'<>]*)', html)
@@ -589,6 +734,7 @@ class DouyinExtractor:
             resources.append({'url': url, 'name': f'douyin_cover_{i + 1}{ext}', 'category': 'image', 'extension': ext, 'headers': dl_headers})
         return resources
 
+    # ---- Fallback: og:meta ----
     def _extract_og_media(self, html):
         resources = []
         m = re.search(r'property=["\']og:video["\'].*?content=["\'](.*?)["\']', html)

@@ -3,3 +3,5 @@ requests
 beautifulsoup4
 lxml
 waitress
+# 可选：抖音视频下载（安装后重启工具）
+# pip install playwright && playwright install chromium
