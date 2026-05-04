@@ -569,23 +569,91 @@ class DouyinExtractor:
             return []
         try:
             with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
-                context = browser.new_context(viewport={'width': 1920, 'height': 1080})
+                browser = p.chromium.launch(headless=True, args=[
+                    '--no-sandbox', '--disable-setuid-sandbox',
+                    '--disable-blink-features=AutomationControlled',
+                ])
+                context = browser.new_context(
+                    viewport={'width': 1920, 'height': 1080},
+                    user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                )
+                context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined});")
                 page = context.new_page()
+                api_data = []
+
+                def capture_response(response):
+                    url_lower = response.url.lower()
+                    if not response.ok:
+                        return
+                    if 'aweme' in url_lower and ('detail' in url_lower or 'iteminfo' in url_lower):
+                        try:
+                            body = response.text()
+                            if body and len(body) > 50:
+                                api_data.append(body)
+                        except Exception:
+                            pass
+
+                page.on('response', capture_response)
                 page.goto(url, wait_until='domcontentloaded', timeout=30000)
-                page.wait_for_timeout(3000)
-                data = page.evaluate('() => { try { return window._ROUTER_DATA; } catch(e) { return null; } }')
-                if data is None:
-                    data = page.evaluate('() => { try { var s = document.getElementById("RENDER_DATA"); return s ? decodeURIComponent(s.textContent) : null; } catch(e) { return null; } }')
-                    if data:
-                        import json
-                        data = json.loads(data)
-                browser.close()
+                page.wait_for_timeout(8000)
+
+                for body in api_data:
+                    try:
+                        d = json.loads(body)
+                        aweme = d.get('aweme_detail') or d.get('item_list', [{}])[0]
+                        if aweme and aweme.get('video'):
+                            result = self._extract_from_router_aweme(aweme, dl_headers)
+                            if result:
+                                browser.close()
+                                return result
+                    except Exception:
+                        continue
+
+                data = page.evaluate('window._ROUTER_DATA')
                 if not data:
-                    return []
-                return self._extract_from_router(data, dl_headers)
+                    rd = page.evaluate('() => { var s = document.getElementById("RENDER_DATA"); return s ? decodeURIComponent(s.textContent) : null; }')
+                    if rd:
+                        import json
+                        data = json.loads(rd)
+                browser.close()
+                if data:
+                    return self._extract_from_router(data, dl_headers)
+                return []
         except Exception:
             return []
+
+    def _extract_from_router_aweme(self, aweme, dl_headers):
+        resources = []
+        title = aweme.get('desc', 'douyin_video')[:50]
+        safe = re.sub(r'[<>:"/\\|?*]', '_', title)
+        video = aweme.get('video', {})
+        play_addr = video.get('play_addr', {})
+        for key in ['url_list', 'url_list_go', 'url']:
+            urls = play_addr.get(key, []) if isinstance(play_addr.get(key), list) else [play_addr.get(key)] if play_addr.get(key) else []
+            for vurl in urls:
+                if vurl:
+                    if vurl.startswith('//'):
+                        vurl = 'https:' + vurl
+                    resources.append({'url': vurl, 'name': f'{safe}.mp4', 'category': 'video', 'extension': '.mp4', 'headers': dl_headers})
+                    break
+            if resources:
+                break
+        cover = video.get('cover', {}) or video.get('origin_cover', {})
+        cover_urls = cover.get('url_list', [])
+        for curl in cover_urls:
+            if curl.startswith('//'):
+                curl = 'https:' + curl
+            resources.append({'url': curl, 'name': f'{safe}_cover.jpg', 'category': 'image', 'extension': '.jpg', 'headers': dl_headers})
+            break
+        images = aweme.get('images', [])
+        for i, img in enumerate(images):
+            url_list = img.get('url_list', [])
+            for iurl in url_list:
+                if iurl.startswith('//'):
+                    iurl = 'https:' + iurl
+                resources.append({'url': iurl, 'name': f'{safe}_img_{i+1}.jpeg', 'category': 'image', 'extension': '.jpeg', 'headers': dl_headers})
+                break
+        return resources
 
     def _extract_from_router(self, state, dl_headers):
         resources = []
